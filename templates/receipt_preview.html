@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receipt Preview</title>
+    <style>
+        body {
+            font-family: 'Calibri', 'Segoe UI', sans-serif;
+            background: #555;
+            padding: 20px;
+        }
+
+        .page {
+            background: white;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            min-height: 100vh;
+        }
+
+        /* 2-Column Grid Layout */
+        .grid-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .receipt-container {
+            page-break-inside: avoid;
+            border: 1px solid #eee;
+            /* Optional visual separation */
+            padding: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 5px;
+            font-size: 13px;
+        }
+
+        /* Excel Grid Simulation */
+        th,
+        td {
+            border: 1px solid #ccc;
+            padding: 4px 8px;
+        }
+
+        .header-cell {
+            background-color: #E0E0E0;
+            /* Light Grey */
+            font-weight: bold;
+        }
+
+        .col-header {
+            background-color: #E0E0E0;
+            font-weight: bold;
+            text-align: left;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .total-row td {
+            background-color: #E0E0E0;
+            font-weight: bold;
+            border-top: 2px solid #aaa;
+        }
+
+        .no-border {
+            border: none;
+            background: white;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            grid-column: 1 / -1;
+        }
+
+        .print-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2196F3;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            z-index: 100;
+        }
+
+        .print-btn:hover {
+            background: #1976D2;
+        }
+
+        @media print {
+            @page {
+                size: A4;
+                margin: 5mm;
+            }
+
+            body {
+                background: white;
+                padding: 0;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .page {
+                box-shadow: none;
+                margin: 0;
+                padding: 0;
+                max-width: 100%;
+                width: 100%;
+            }
+
+            .print-btn {
+                display: none;
+            }
+
+            .grid-container {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 5mm;
+                width: 100%;
+            }
+
+            .receipt-container {
+                break-inside: avoid;
+                page-break-inside: avoid;
+                padding: 0;
+                border: 1px solid #999;
+                /* Visible border for print */
+                margin-bottom: 2mm;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <a href="javascript:window.print()" class="print-btn">Print / Save PDF</a>
+
+    <div class="page">
+        <div class="grid-container">
+            <h1>Payment Receipts Reference</h1>
+
+            {% for m in members %}
+            <div class="receipt-container">
+                <table>
+                    <!-- Row 1: Header Block -->
+                    <tr>
+                        <td class="header-cell" style="width: 15%">Name</td>
+                        <td class="header-cell" style="width: 30%">{{ m['name'] }}</td>
+                        <td class="header-cell" style="width: 30%">{{ m['area'] }}</td>
+                        <td class="header-cell text-right" style="width: 25%">
+                            {% if m.get('paid_date') %} {{ m['paid_date'] }} {% else %} {{ now.strftime('%d-%b-%Y') }}
+                            {% endif %}
+                        </td>
+                    </tr>
+
+                    <!-- Row 2: Column Headers -->
+                    <tr>
+                        <td class="col-header">Month</td>
+                        <td class="col-header">Plan</td>
+                        <td class="col-header">Commission</td>
+                        <td class="col-header">Amount</td>
+                    </tr>
+
+                    <!-- Row 3+: Items -->
+                    {% if m['items'] %}
+                    {% for item in m['items'] %}
+                    <tr>
+                        <td>{{ item['month'] }}</td>
+                        <td>{{ item['plan'] }}</td>
+                        <td>{{ item['commission'] }}</td>
+                        <td class="text-right">{{ "{:,.2f}".format(item['amount']) }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td class="text-right">{{ "{:,.2f}".format(m['total']) }}</td>
+                    </tr>
+                    {% endif %}
+
+                    <!-- Empty Spacer Row (Visual only) -->
+                    <tr>
+                        <td class="header-cell" style="height: 10px;"></td>
+                        <td class="header-cell"></td>
+                        <td class="header-cell"></td>
+                        <td class="header-cell"></td>
+                    </tr>
+
+                    <!-- Footer: Total -->
+                    <tr class="total-row">
+                        <td>Total Payable</td>
+                        <td colspan="2"></td>
+                        <td class="text-right">{{ "{:,.2f}".format(m['total']) }}</td>
+                    </tr>
+                </table>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+</body>
+
+</html>

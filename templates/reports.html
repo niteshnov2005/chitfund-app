@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monthly Report</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #fff;
+            color: #333;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 1.8rem;
+        }
+
+        .print-btn {
+            background: #333;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            text-decoration: none;
+        }
+
+        .controls {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        select {
+            padding: 8px;
+            font-size: 1rem;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+
+        h2 {
+            border-left: 5px solid #2ecc71;
+            padding-left: 10px;
+            margin-top: 40px;
+        }
+
+        .pending-title {
+            border-left-color: #e74c3c;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th {
+            text-align: left;
+            background: #eee;
+            padding: 10px;
+            border-bottom: 2px solid #ddd;
+        }
+
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .amount {
+            font-weight: bold;
+            text-align: right;
+        }
+
+        .date {
+            color: #2ecc71;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .summary-box {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .stat {
+            background: #f4f7f6;
+            padding: 15px;
+            border-radius: 8px;
+            flex: 1;
+            text-align: center;
+        }
+
+        .stat-val {
+            font-size: 1.5rem;
+            font-weight: bold;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        @media print {
+
+            .print-btn,
+            .controls,
+            .btn-back {
+                display: none;
+            }
+
+            body {
+                padding: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="header">
+            <div>
+                <a href="/dashboard" class="btn-back"
+                    style="color:#666; text-decoration:none; display:block; margin-bottom:5px;">← Dashboard</a>
+                <h1>Monthly Auction Report</h1>
+            </div>
+            <button class="print-btn" onclick="window.print()">🖨️ Print Report</button>
+        </div>
+
+        <div class="controls">
+            <label>Select Month:</label>
+            <select id="sheetSelect" onchange="loadReport()">
+                {% for sheet in sheets %}
+                <option value="{{ sheet }}">{{ sheet }}</option>
+                {% endfor %}
+            </select>
+            <span id="loading" style="color:#777; display:none;">Loading...</span>
+        </div>
+
+        <div class="summary-box">
+            <div class="stat">
+                <span class="stat-val" id="total-collected" style="color:#2ecc71">₹0</span>
+                <span class="stat-label">Total Collected</span>
+            </div>
+            <div class="stat">
+                <span class="stat-val" id="total-pending" style="color:#e74c3c">₹0</span>
+                <span class="stat-label">Total Pending</span>
+            </div>
+            <div class="stat">
+                <span class="stat-val" id="total-value" style="color:#3498db">₹0</span>
+                <span class="stat-label">Total Value</span>
+            </div>
+        </div>
+
+        <h2 class="pending-title">⚠️ Pending Payments</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Member Name</th>
+                    <th>Area</th>
+                    <th style="text-align:right">Amount</th>
+                </tr>
+            </thead>
+            <tbody id="pending-list"></tbody>
+        </table>
+
+        <h2>✅ Payment History</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Member Name</th>
+                    <th>Area</th>
+                    <th>Paid On</th>
+                    <th style="text-align:right">Amount</th>
+                </tr>
+            </thead>
+            <tbody id="paid-list"></tbody>
+        </table>
+
+    </div>
+
+    <script>
+        function loadReport() {
+            const sheet = document.getElementById('sheetSelect').value;
+            const loader = document.getElementById('loading');
+            loader.style.display = 'inline';
+
+            fetch(`/api/members?sheet=${encodeURIComponent(sheet)}`)
+                .then(res => res.json())
+                .then(responseData => {
+                    loader.style.display = 'none';
+                    // Handle API structure change: check if data is array or object
+                    const members = Array.isArray(responseData) ? responseData : (responseData.members || []);
+                    renderTables(members);
+                })
+                .catch(err => {
+                    console.error(err);
+                    loader.innerText = 'Error loading data';
+                });
+        }
+
+        function renderTables(members) {
+            const pendingList = document.getElementById('pending-list');
+            const paidList = document.getElementById('paid-list');
+
+            let pendingHtml = '';
+            let paidHtml = '';
+
+            let sumPending = 0;
+            let sumPaid = 0;
+
+            members.forEach(m => {
+                if (m.total <= 0) return; // Skip zero/negative amounts
+
+                if (m.is_paid) {
+                    sumPaid += m.total;
+                    const date = m.paid_date ? m.paid_date : 'Paid (No Date)';
+                    paidHtml += `<tr>
+                    <td>${m.name}</td>
+                    <td>${m.area}</td>
+                    <td class="date">${date}</td>
+                    <td class="amount">₹${m.total.toLocaleString()}</td>
+                </tr>`;
+                } else {
+                    sumPending += m.total;
+                    pendingHtml += `<tr>
+                    <td>${m.name}</td>
+                    <td>${m.area}</td>
+                    <td class="amount">₹${m.total.toLocaleString()}</td>
+                </tr>`;
+                }
+            });
+
+            if (!pendingHtml) pendingHtml = '<tr><td colspan="3" style="text-align:center; color:#aaa;">No pending payments! 🎉</td></tr>';
+            if (!paidHtml) paidHtml = '<tr><td colspan="4" style="text-align:center; color:#aaa;">No payments recorded yet.</td></tr>';
+
+            pendingList.innerHTML = pendingHtml;
+            paidList.innerHTML = paidHtml;
+
+            document.getElementById('total-pending').innerText = '₹' + sumPending.toLocaleString();
+            document.getElementById('total-collected').innerText = '₹' + sumPaid.toLocaleString();
+            document.getElementById('total-value').innerText = '₹' + (sumPending + sumPaid).toLocaleString();
+        }
+
+        // Load default on start
+        loadReport();
+    </script>
+
+</body>
+
+</html>

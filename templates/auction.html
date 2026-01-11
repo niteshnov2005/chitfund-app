@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Run Auction</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f8f9fa; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        
+        h1 { text-align: center; color: #2c3e50; font-size: 1.5rem; }
+        
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #555; }
+        
+        /* Responsive Inputs */
+        input[type="text"], input[type="number"], input[type="date"] {
+            width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px; font-size: 1rem; box-sizing: border-box;
+        }
+        input:focus { border-color: #3498db; outline: none; }
+
+        /* Group Card */
+        .group-item { background: #f1f8ff; border: 1px solid #d0e6fb; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        .group-header { display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 10px; }
+        
+        .row-inputs { display: flex; gap: 10px; }
+        .row-inputs input { flex: 1; } /* Inputs share space equally */
+
+        .btn-submit {
+            background: #27ae60; color: white; width: 100%; padding: 15px; 
+            border: none; border-radius: 8px; font-size: 1.1rem; font-weight: bold; cursor: pointer;
+        }
+        .btn-submit:hover { background: #219150; }
+
+        .btn-back { display: block; text-align: center; margin-bottom: 20px; text-decoration: none; color: #777; }
+
+        /* Mobile Stack */
+        @media (max-width: 480px) {
+            .row-inputs { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <a href="/dashboard" class="btn-back">← Back to Dashboard</a>
+    <h1>🚀 Run Monthly Auction</h1>
+    
+    <form action="/run-auction-batch" method="POST">
+        
+        <div class="form-group">
+            <label>Global Date (Receipt Date)</label>
+            <input type="date" name="global_date" required>
+        </div>
+        
+        <div class="form-group">
+            <label>New Sheet Name (e.g., Dec-2025)</label>
+            <input type="text" name="sheet_name" placeholder="Name for the new Excel Tab" required>
+        </div>
+
+        <hr style="border:0; border-top:1px solid #eee; margin: 25px 0;">
+
+        {% for g in groups %}
+        <div class="group-item">
+            <div class="group-header">
+                <span>Month {{ g.current_month }}</span>
+                <span style="color:#2980b9;">₹{{ g.plan_display }}</span>
+            </div>
+            <div class="row-inputs">
+                <input type="text" name="new_month_for_{{ g.id }}" placeholder="New Month (e.g. {{ g.current_month|int + 1 }})" required>
+                <input type="number" name="bid_for_{{ g.id }}" placeholder="Winning Bid Amount" required>
+            </div>
+        </div>
+        {% endfor %}
+
+        <button type="submit" class="btn-submit">Update Excel & Generate</button>
+    </form>
+</div>
+
+</body>
+</html>

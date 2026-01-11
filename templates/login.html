@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chit Fund Login</title>
+    <style>
+        main {
+    flex: 1;
+    padding: 30px;
+    overflow-y: auto;  /* THIS IS CRITICAL FOR SCROLLING */
+    height: 100vh;     /* This ensures it fills the screen */
+}
+        body {
+            margin: 0; padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            font-family: sans-serif;
+            overflow: hidden;
+        }
+        /* Animated Background Bubbles */
+        .circles{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; z-index: 0;}
+        .circles li{ position: absolute; display: block; list-style: none; width: 20px; height: 20px; background: rgba(255, 255, 255, 0.2); animation: animate 25s linear infinite; bottom: -150px; }
+        .circles li:nth-child(1){ left: 25%; width: 80px; height: 80px; animation-delay: 0s; }
+        .circles li:nth-child(2){ left: 10%; width: 20px; height: 20px; animation-delay: 2s; animation-duration: 12s; }
+        .circles li:nth-child(3){ left: 70%; width: 20px; height: 20px; animation-delay: 4s; }
+        @keyframes animate { 0%{ transform: translateY(0) rotate(0deg); opacity: 1; border-radius: 0; } 100%{ transform: translateY(-1000px) rotate(720deg); opacity: 0; border-radius: 50%; } }
+
+        .login-box {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 15px 25px rgba(0,0,0,0.2);
+            width: 300px;
+            z-index: 1;
+            text-align: center;
+        }
+        .login-box h2 { color: #2c3e50; margin-bottom: 30px; }
+        .input-group { position: relative; margin-bottom: 25px; }
+        .input-group input { width: 100%; padding: 10px 0; border: none; border-bottom: 2px solid #ccc; outline: none; background: transparent; }
+        .input-group label { position: absolute; top: 0; left: 0; padding: 10px 0; pointer-events: none; transition: 0.5s; color: #999; }
+        .input-group input:focus ~ label, .input-group input:valid ~ label { top: -20px; left: 0; color: #3498db; font-size: 12px; }
+        
+        button {
+            background: #3498db; color: white; border: none;
+            padding: 10px 20px; border-radius: 5px; cursor: pointer;
+            font-size: 16px; width: 100%; transition: background 0.3s;
+        }
+        button:hover { background: #2980b9; }
+        .error { color: red; font-size: 0.9rem; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+    <ul class="circles">
+        <li></li><li></li><li></li><li></li><li></li><li></li>
+    </ul>
+    <div class="login-box">
+        <h2>Admin Portal</h2>
+        {% if error %}
+            <div class="error">{{ error }}</div>
+        {% endif %}
+        <form action="/login" method="POST">
+            <div class="input-group">
+                <input type="text" name="username" required>
+                <label>Username</label>
+            </div>
+            <div class="input-group">
+                <input type="password" name="password" required>
+                <label>Password</label>
+            </div>
+            <button type="submit">Login</button>
+        </form>
+    </div>
+</body>
+</html>

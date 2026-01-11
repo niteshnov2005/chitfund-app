@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chit Fund Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --bg: #f4f7f6;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: #333;
+            transition: margin-left .3s;
+        }
+
+        /* --- 1. HEADER & MENU BUTTON --- */
+        .header {
+            background: white;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .menu-btn {
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--primary);
+            background: none;
+            border: none;
+        }
+
+        .logo {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-left: 15px;
+        }
+
+        /* --- 2. SLIDING SIDEBAR --- */
+        .sidenav {
+            height: 100%;
+            width: 0;
+            position: fixed;
+            z-index: 100;
+            top: 0;
+            left: 0;
+            background-color: var(--primary);
+            overflow-x: hidden;
+            transition: 0.3s;
+            padding-top: 60px;
+            box-shadow: 4px 0 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .sidenav a {
+            padding: 15px 25px;
+            text-decoration: none;
+            font-size: 1.1rem;
+            color: #ecf0f1;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: 0.2s;
+            white-space: nowrap;
+        }
+
+        .sidenav a:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: var(--accent);
+            border-left: 4px solid var(--accent);
+        }
+
+        .sidenav .closebtn {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 2rem;
+            margin-left: 50px;
+            color: #aaa;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .sidenav .closebtn:hover {
+            color: white;
+        }
+
+        /* Overlay */
+        #overlay {
+            position: fixed;
+            display: none;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 50;
+            cursor: pointer;
+        }
+
+        /* --- 3. DASHBOARD CONTENT --- */
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+            transition: transform 0.2s;
+            border-left: 5px solid var(--accent);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .card h3 {
+            margin: 0 0 10px 0;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .card .value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        /* Spinner for loading values */
+        .loading-dots:after {
+            content: ' .';
+            animation: dots 1s steps(5, end) infinite;
+        }
+
+        @keyframes dots {
+
+            0%,
+            20% {
+                color: rgba(0, 0, 0, 0);
+                text-shadow: .25em 0 0 rgba(0, 0, 0, 0), .5em 0 0 rgba(0, 0, 0, 0);
+            }
+
+            40% {
+                color: #333;
+                text-shadow: .25em 0 0 rgba(0, 0, 0, 0), .5em 0 0 rgba(0, 0, 0, 0);
+            }
+
+            60% {
+                text-shadow: .25em 0 0 #333, .5em 0 0 rgba(0, 0, 0, 0);
+            }
+
+            80%,
+            100% {
+                text-shadow: .25em 0 0 #333, .5em 0 0 #333;
+            }
+        }
+
+        .actions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .btn-action {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--primary);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .btn-action:hover {
+            border-color: var(--accent);
+            background: #f0f9ff;
+        }
+
+        .btn-action i {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            color: var(--accent);
+        }
+
+        .btn-action span {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        @media (max-width: 768px) {
+            .card .value {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="overlay" onclick="closeNav()"></div>
+
+    <div class="header">
+        <div style="display:flex; align-items:center;">
+            <button class="menu-btn" onclick="openNav()"><i class="fas fa-bars"></i></button>
+            <div class="logo">💎 Chit Fund</div>
+        </div>
+    </div>
+
+    <div id="mySidenav" class="sidenav">
+        <button class="closebtn" onclick="closeNav()">&times;</button>
+        <div style="padding: 20px 25px; color: #7f8c8d; font-size: 0.8rem; text-transform: uppercase;">Menu</div>
+        <a href="/dashboard"><i class="fas fa-home" style="width:25px;"></i> Dashboard</a>
+        <a href="/members"><i class="fas fa-users" style="width:25px;"></i> Members</a>
+        <a href="/reports"><i class="fas fa-chart-line" style="width:25px;"></i> Reports</a>
+        <a href="/auction"><i class="fas fa-gavel" style="width:25px;"></i> Auction</a>
+        <div style="border-top: 1px solid rgba(255,255,255,0.1); margin: 15px 0;"></div>
+        <a href="/logout" style="color: #e74c3c;"><i class="fas fa-sign-out-alt" style="width:25px;"></i> Logout</a>
+    </div>
+
+    <div class="container">
+        <h1>Dashboard</h1>
+        <p style="color:#777; margin-bottom:30px;">Overview for {{ timestamp }}</p>
+
+        <div class="stats-grid">
+
+            <div class="card" style="border-left-color: #9b59b6;">
+                <h3>Total Value</h3>
+                <div class="value" id="val-total"><span class="loading-dots"></span></div>
+            </div>
+
+            <div class="card" style="border-left-color: #2ecc71;">
+                <h3>Active Members</h3>
+                <div class="value" id="val-members"><span class="loading-dots"></span></div>
+            </div>
+
+            <div class="card" style="border-left-color: #e74c3c;">
+                <h3>Pending Members</h3>
+                <div class="value" id="val-pending"><span class="loading-dots"></span></div>
+            </div>
+
+            <div class="card" style="border-left-color: #f1c40f;">
+                <h3>Next Auction (Sun)</h3>
+                <div class="value" id="val-date">...</div>
+            </div>
+        </div>
+
+        <h2 style="margin-bottom:20px;">Quick Actions</h2>
+        <div class="actions-grid">
+            <a href="/members" class="btn-action">
+                <i class="fas fa-users"></i>
+                <span>Member Collection</span>
+            </a>
+            <a href="/reports" class="btn-action">
+                <i class="fas fa-chart-line"></i>
+                <span>Reports</span>
+            </a>
+            <a href="/auction" class="btn-action">
+                <i class="fas fa-gavel"></i>
+                <span>Run Auction</span>
+            </a>
+            <a href="/excel_editor" class="btn-action" style="background:#2ecc71;">
+                <i class="fas fa-table"></i>
+                <span>Excel Editor</span>
+            </a>
+            <a href="/view_receipts" target="_blank" class="btn-action" style="background:#f39c12;">
+                <i class="fas fa-receipt"></i>
+                <span>View Receipts</span>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. Menu Animation Logic ---
+        function openNav() {
+            document.getElementById("mySidenav").style.width = "280px";
+            document.getElementById("overlay").style.display = "block";
+        }
+
+        function closeNav() {
+            document.getElementById("mySidenav").style.width = "0";
+            document.getElementById("overlay").style.display = "none";
+        }
+
+        // --- 2. Auto-Calculate Next Auction Date (First Sunday of Next Month) ---
+        function setNextAuctionDate() {
+            const now = new Date();
+            // Go to 1st day of next month
+            let nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+            // Find day of week (0=Sun, 1=Mon, etc.)
+            const day = nextMonth.getDay();
+            // Calculate days to add to reach Sunday (if today is Sun(0), add 0. If Mon(1), add 6.)
+            const diff = (7 - day) % 7;
+
+            nextMonth.setDate(nextMonth.getDate() + diff);
+
+            const options = { month: 'short', day: 'numeric', year: 'numeric' };
+            document.getElementById('val-date').innerText = nextMonth.toLocaleDateString('en-US', options);
+        }
+
+        // --- 3. Fetch Data from Excel to Update Dashboard ---
+        function fetchStats() {
+            fetch('/api/members?t=' + new Date().getTime())
+                .then(response => response.json())
+                .then(responseData => {
+                    // Handle API change: check if data is array or object
+                    const data = Array.isArray(responseData) ? responseData : (responseData.members || []);
+                    const backendTotal = responseData.grand_total || 0;
+
+                    // Count Total Members
+                    const memberCount = data.length;
+
+                    // Calculate Total Value (Sum of all totals)
+                    let totalValue = 0;
+                    let pendingCount = 0;
+
+                    data.forEach(m => {
+                        totalValue += m.total;
+                        // Count Pending: If total > 0 AND not marked as paid
+                        if (m.total > 0 && !m.is_paid) {
+                            pendingCount++;
+                        }
+                    });
+
+                    // ERROR: The sum of member totals is significantly less than the grand total 
+                    // found in the Excel sheet (due to missing data or structure issues).
+                    // So we prioritize the backendTotal if it exists (which we grab from Row 23).
+                    if (backendTotal > 0) {
+                        totalValue = backendTotal;
+                    }
+
+                    // Format Total Value (e.g. 88.5L)
+                    // Logic: 8855450 / 100000 = 88.55
+                    const lakhs = (totalValue / 100000).toFixed(2);
+
+                    // Update UI
+                    document.getElementById('val-members').innerText = memberCount;
+                    document.getElementById('val-total').innerText = "₹" + lakhs + "L";
+                    document.getElementById('val-pending').innerText = pendingCount;
+                })
+                .catch(err => {
+                    console.error(err);
+                    document.getElementById('val-members').innerText = "Err";
+                });
+        }
+
+        // Initialize
+        setNextAuctionDate();
+        fetchStats();
+
+    </script>
+
+</body>
+
+</html>

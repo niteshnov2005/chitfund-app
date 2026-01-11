@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel Editor</title>
+    <script src="https://bossanova.uk/jspreadsheet/v4/jexcel.js"></script>
+    <script src="https://jsuites.net/v4/jsuites.js"></script>
+    <!-- Add Formula Parser Explicitly -->
+    <script src="https://bossanova.uk/jformulaparser/v2/jformula.js"></script>
+    <link rel="stylesheet" href="https://bossanova.uk/jspreadsheet/v4/jexcel.css" type="text/css" />
+    <link rel="stylesheet" href="https://jsuites.net/v4/jsuites.css" type="text/css" />
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f4f4f4;
+        }
+
+        .header {
+            background: #E8F5E9;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #C8E6C9;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 8px 15px;
+            border-radius: 5px;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .btn-save {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-back {
+            background: #ddd;
+            color: #333;
+        }
+
+        select {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            font-size: 1rem;
+        }
+
+        #spreadsheet {
+            margin: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            background: white;
+            /* overflow: auto;  <-- REMOVED to avoid conflict with Jspreadsheet's internal scrolling */
+        }
+
+        #status {
+            margin-left: 10px;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        .status-saving {
+            color: orange;
+        }
+
+        .status-saved {
+            color: green;
+        }
+
+        .status-error {
+            color: red;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <div class="controls">
+            <a href="/dashboard" class="btn btn-back">← Dashboard</a>
+            <select id="sheetSelect" onchange="loadSheet()"></select>
+            <button class="btn btn-save" onclick="saveData()">💾 Save Changes</button>
+            <span id="status"></span>
+        </div>
+        <div style="font-weight:bold; color:#2E7D32;">Live Excel Editor</div>
+    </div>
+
+    <div id="spreadsheet"></div>
+
+    <script>
+        let mySpreadsheet = null;
+
+        // 1. Load Sheets
+        fetch('/api/sheets')
+            .then(res => res.json())
+            .then(data => {
+                const select = document.getElementById('sheetSelect');
+                data.sheets.forEach(sheet => {
+                    const opt = document.createElement('option');
+                    opt.value = sheet;
+                    opt.innerText = sheet;
+                    select.appendChild(opt);
+                });
+                // Default to first sheet (index 0)
+                if (data.sheets.length > 0) {
+                    select.selectedIndex = 0;
+                    loadSheet();
+                }
+            });
+
+        function loadSheet() {
+            const sheet = document.getElementById('sheetSelect').value;
+            document.getElementById('spreadsheet').innerHTML = 'Loading...';
+
+            fetch(`/api/sheet_data?sheet=${encodeURIComponent(sheet)}`)
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('spreadsheet').innerHTML = '';
+
+                    // Initialize Jspreadsheet
+                    mySpreadsheet = jspreadsheet(document.getElementById('spreadsheet'), {
+                        data: data.data,
+                        search: true,
+                        // pagination: 20, // REMOVED pagination to allow scrolling
+                        columns: data.data[0].map(() => ({ type: 'text', width: 100 })),
+                        defaultColWidth: 100,
+                        tableOverflow: true,
+                        tableWidth: '100%', // Enable horizontal scrolling
+                        tableHeight: '80vh', // Adjust height
+                        parseFormulas: true, // Enable formula calculation
+                        wordWrap: true,
+                    });
+                })
+                .catch(err => {
+                    document.getElementById('spreadsheet').innerHTML = 'Error loading sheet: ' + err;
+                });
+        }
+
+        function saveData() {
+            const status = document.getElementById('status');
+            if (!mySpreadsheet) return;
+
+            status.innerText = 'Saving...';
+            status.className = 'status-saving';
+
+            const sheet = document.getElementById('sheetSelect').value;
+            // Pass (false, true) to getData to retrieve FORMULAS instead of calculated values
+            // arg1: onlyHighlighted (false), arg2: processed/formulas (true? check docs/behavior)
+            // Actually in v4: getData(highlighted, processed)
+            // If parsed/processed=false, maybe it gives raw?
+            // Let's try getData(false, false) which might be default? 
+            // Wait, docs say: "processed: boolean - Get the raw data. Default: false"
+            // So if default is false, it should give raw. ??
+            // Let's try getJson() or just iterate to be safe?
+            // Actually, simply: data = mySpreadsheet.getData(false, true) is often cited.
+            const data = mySpreadsheet.getData(false, false);
+
+            fetch('/api/save_sheet_data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sheet_name: sheet, data: data })
+            })
+                .then(res => res.json())
+                .then(res => {
+                    if (res.success) {
+                        status.innerText = 'All changes saved!';
+                        status.className = 'status-saved';
+                        setTimeout(() => status.innerText = '', 3000);
+                    } else {
+                        status.innerText = 'Error: ' + res.error;
+                        status.className = 'status-error';
+                    }
+                })
+                .catch(err => {
+                    status.innerText = 'Network Error';
+                    status.className = 'status-error';
+                });
+        }
+    </script>
+
+</body>
+
+</html>

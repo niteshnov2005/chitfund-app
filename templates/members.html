@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Member Totals</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --green: #4caf50;
+            --red: #ef5350;
+            --orange: #ff9800;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f0f2f5;
+            margin: 0;
+            padding-top: 80px;
+            /* Space for fixed header */
+        }
+
+        /* Sticky Header */
+        .fixed-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            padding: 15px 20px;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .search-box {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 20px 12px 45px;
+            border: 2px solid #eee;
+            border-radius: 50px;
+            outline: none;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .search-input:focus {
+            border-color: #2196f3;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #aaa;
+        }
+
+        .btn-back {
+            background: #eee;
+            padding: 10px 20px;
+            border-radius: 20px;
+            text-decoration: none;
+            color: #555;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Responsive Card */
+        .member-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            border-left: 6px solid var(--orange);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .member-card.status-paid {
+            border-left-color: var(--green);
+            background: #f9fff9;
+        }
+
+        .member-card.status-partial {
+            border-left-color: var(--orange);
+            background: #fff8e1;
+        }
+
+        .row-paid {
+            text-decoration: line-through;
+            color: #888;
+            background-color: #f0f0f0;
+        }
+
+        input[type="checkbox"] {
+            transform: scale(1.2);
+            accent-color: var(--green);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-header h2 {
+            margin: 0;
+            font-size: 1.2rem;
+        }
+
+        .area-badge {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 4px 10px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        /* Scrollable Table for Mobile */
+        .table-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 300px;
+        }
+
+        th {
+            text-align: left;
+            font-size: 0.85rem;
+            color: #888;
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+        }
+
+        td {
+            padding: 8px 5px;
+            border-bottom: 1px solid #f9f9f9;
+            font-size: 0.95rem;
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+
+        .total-amount {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .pay-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 30px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s;
+            width: 140px;
+            text-align: center;
+        }
+
+        .pay-btn:active {
+            transform: scale(0.95);
+        }
+
+        .btn-unpaid {
+            background: white;
+            color: var(--red);
+            border: 2px solid var(--red);
+        }
+
+        .btn-paid {
+            background: var(--green);
+            color: white;
+            border: 2px solid var(--green);
+        }
+
+        /* Mobile Layout */
+        @media (max-width: 600px) {
+            .fixed-header {
+                flex-direction: column;
+                gap: 10px;
+                align-items: stretch;
+            }
+
+            .btn-back {
+                text-align: center;
+            }
+
+            body {
+                padding-top: 120px;
+            }
+
+            /* More space for stacked header */
+            .card-footer {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+
+            .pay-btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="fixed-header">
+        <div class="search-box">
+            <i class="fas fa-search search-icon"></i>
+            <input type="text" id="areaSearch" class="search-input" placeholder="Search Name or Area...">
+        </div>
+        <select id="sheetSelect" class="sheet-select"
+            style="margin: 0 10px; padding: 10px; border-radius: 20px; border: 2px solid #eee;">
+            <option value="">Loading...</option>
+        </select>
+        <a href="/dashboard" class="btn-back">Back to Dash</a>
+    </div>
+
+    <div class="container">
+        <div id="loading" style="text-align:center; padding:20px;">Loading members...</div>
+        <div id="members-list"></div>
+    </div>
+
+    <script>
+        // Init: Load Sheets then Load Members
+        fetch('/api/sheets')
+            .then(res => res.json())
+            .then(data => {
+                const select = document.getElementById('sheetSelect');
+                select.innerHTML = '';
+
+                if (data.sheets && data.sheets.length > 0) {
+                    data.sheets.forEach(sheet => {
+                        const opt = document.createElement('option');
+                        opt.value = sheet;
+                        opt.innerText = sheet;
+                        select.appendChild(opt);
+                    });
+                    // Select the FIRST sheet by default (User Preference)
+                    select.selectedIndex = 0;
+                    loadMembers(select.value);
+                } else {
+                    select.innerHTML = '<option>No Sheets</option>';
+                    document.getElementById('loading').innerText = 'No Data Found';
+                }
+            });
+
+        document.getElementById('sheetSelect').addEventListener('change', (e) => {
+            loadMembers(e.target.value);
+        });
+
+        function loadMembers(sheetName) {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('members-list').innerHTML = '';
+
+            fetch(`/api/members?sheet=${encodeURIComponent(sheetName)}&t=` + new Date().getTime())
+                .then(res => res.json())
+                .then(responseData => {
+                    const members = Array.isArray(responseData) ? responseData : (responseData.members || []);
+                    renderMembers(members);
+                });
+        }
+
+        // Search Logic
+        document.getElementById('areaSearch').addEventListener('keyup', (e) => {
+            const term = e.target.value.toLowerCase();
+            document.querySelectorAll('.member-card').forEach(card => {
+                const text = card.innerText.toLowerCase();
+                card.style.display = text.includes(term) ? 'flex' : 'none';
+            });
+        });
+
+        function renderMembers(members) {
+            document.getElementById('loading').style.display = 'none';
+            const container = document.getElementById('members-list');
+            container.innerHTML = '';
+
+            // Sort: Unpaid/Partial first, then Fully Paid
+            members.sort((a, b) => {
+                // Percentage paid
+                const aPct = a.total > 0 ? (a.paid_amount / a.total) : 1;
+                const bPct = b.total > 0 ? (b.paid_amount / b.total) : 1;
+                if (aPct === bPct) return 0;
+                return aPct > bPct ? 1 : -1;
+            });
+
+            members.forEach(m => {
+                let rows = m.items.map(i => {
+                    const isItemPaid = i.is_paid;
+                    const checkState = isItemPaid ? 'checked' : '';
+                    const rowClass = isItemPaid ? 'row-paid' : '';
+
+                    return `
+                    <tr class="${rowClass}">
+                        <td>
+                            <input type="checkbox" class="item-check" 
+                                   id="chk-${i.id}" 
+                                   ${checkState} 
+                                   onclick="toggleItem('${i.id}', this, '${m.payment_id}')">
+                        </td>
+                        <td>${i.month}</td>
+                        <td>${i.plan}</td>
+                        <td align="right">₹${i.amount.toLocaleString()}</td>
+                    </tr>`;
+                }).join('');
+
+                if (!rows) rows = '<tr><td colspan="4" align="center" style="color:#aaa">No active dues</td></tr>';
+
+                // Status Logic
+                const isFullyPaid = m.is_paid; // Calculated in backend
+                const isPartial = m.paid_amount > 0 && m.paid_amount < m.total;
+
+                let statusClass = '';
+                if (isFullyPaid) statusClass = 'status-paid';
+                else if (isPartial) statusClass = 'status-partial';
+
+                const unpaidAmount = m.total - m.paid_amount;
+
+                container.innerHTML += `
+                <div class="member-card ${statusClass}" id="card-${m.payment_id}">
+                    <div class="card-header">
+                        <div>
+                            <h2>${m.name}</h2>
+                            <span class="area-badge">${m.area}</span>
+                        </div>
+                        <div style="text-align:right">
+                            <div style="font-size:0.8rem; color:#777;">Paid / Total</div>
+                            <div style="font-weight:bold;">
+                                <span id="paid-${m.payment_id}">₹${m.paid_amount.toLocaleString()}</span> / 
+                                ₹${m.total.toLocaleString()}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th style="width:30px">Pay</th><th>Mo</th><th>Plan</th><th align="right">Amt</th></tr></thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>
+                    ${m.is_paid && m.paid_date ? `<div style="text-align:right; font-size:0.75rem; color:green; padding:5px;">Last Paid: ${m.paid_date}</div>` : ''}
+                </div>
+            `;
+            });
+        }
+
+        function toggleItem(itemId, checkbox, memberId) {
+            // Optimistic UI
+            const row = checkbox.closest('tr');
+            if (checkbox.checked) {
+                row.classList.add('row-paid');
+            } else {
+                row.classList.remove('row-paid');
+            }
+
+            fetch('/api/toggle-pay', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: itemId })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        // Ideally we should reload the data or intelligently update the total
+                        // For now, let's reload to ensure totals and status classes are correct
+                        fetch('/api/members?t=' + new Date().getTime())
+                            .then(res => res.json())
+                            .then(response => {
+                                const newData = Array.isArray(response) ? response : (response.members || []);
+                                // Find the specific member and update their card only to avoid scroll jump
+                                const updatedMember = newData.find(x => x.payment_id === memberId);
+                                if (updatedMember) updateMemberCard(updatedMember);
+                            });
+                    }
+                });
+        }
+
+        function updateMemberCard(m) {
+            // Helper to update specific DOM elements instead of full re-render
+            const paidSpan = document.getElementById(`paid-${m.payment_id}`);
+            if (paidSpan) paidSpan.innerText = '₹' + m.paid_amount.toLocaleString();
+
+            const card = document.getElementById(`card-${m.payment_id}`);
+            if (card) {
+                card.className = 'member-card'; // Reset
+                if (m.is_paid) card.classList.add('status-paid');
+                else if (m.paid_amount > 0) card.classList.add('status-partial');
+            }
+        }
+    </script>
+</body>
+
+</html>
