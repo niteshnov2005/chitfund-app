@@ -15,16 +15,22 @@ app = Flask(__name__)
 app.secret_key = 'mini_project_secret_key'
 app.secret_key = 'mini_project_secret_key'
 
-# --- CONFIGURATION (LOCAL vs CLOUD) ---
-if os.name == 'nt':
-    # Local Windows Dev
-    FILE_NAME = 'sample_gemini.xlsx'
-    USE_CLOUD_STORAGE = False
-else:
-    # Cloud Run / Linux
+# --- CONFIGURATION (Start) ---
+# Detect environment
+IS_CLOUD_RUN = os.environ.get('K_SERVICE') is not None
+HAS_SUPABASE = os.environ.get("SUPABASE_URL") is not None
+
+if IS_CLOUD_RUN:
+    # Cloud Run (Stateless): Must use /tmp
     FILE_NAME = '/tmp/data.xlsx'
-    USE_CLOUD_STORAGE = True
-    BUCKET_NAME = os.environ.get("BUCKET_NAME", "chitfund-data")
+else:
+    # Local Windows or PythonAnywhere (Stateful): Use local file
+    # Ensure absolute path for PythonAnywhere robustness
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    FILE_NAME = os.path.join(BASE_DIR, 'sample_gemini.xlsx')
+
+USE_CLOUD_STORAGE = HAS_SUPABASE
+BUCKET_NAME = os.environ.get("BUCKET_NAME", "chitfund-data")
 
 # --- CLOUD STORAGE HELPERS (SUPABASE) ---
 def sync_down():
@@ -49,10 +55,24 @@ def sync_down():
                 f.write(response)
             print("Download successful.")
         else:
-            print("No remote file found or empty response.")
+            print("No remote file found.")
+            # If Cloud Run and no remote file, we might crash if we don't have a seed.
+            # But currently we assume seed is in bucket.
             
     except Exception as e:
         print(f"Supabase Download Error: {e}")
+
+# Initial Sync
+if USE_CLOUD_STORAGE: sync_down()
+
+# Cloud Run Fallback: If /tmp/data.xlsx still doesn't exist (sync failed or new setup),
+# try to copy from local seed if available in container
+if IS_CLOUD_RUN and not os.path.exists(FILE_NAME):
+    local_seed = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sample_gemini.xlsx')
+    if os.path.exists(local_seed):
+        print("Copying local seed to /tmp...")
+        import shutil
+        shutil.copy(local_seed, FILE_NAME)
 
 def sync_up():
     """Uploads the local excel file to Supabase Storage."""
