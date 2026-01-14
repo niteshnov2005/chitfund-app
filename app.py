@@ -151,9 +151,11 @@ def get_excel_data(sheet_name=None):
     try:
         # If no sheet specified, default to the LAST sheet (Most recent month)
         if not sheet_name:
-            wb = openpyxl.load_workbook(FILE_NAME, read_only=True)
-            sheet_name = wb.sheetnames[-1] # Assume last sheet is latest
-            wb.close()
+            sheets = get_all_sheet_names()
+            if sheets:
+                sheet_name = sheets[-1]
+            else:
+                return []
             
         df = pd.read_excel(FILE_NAME, sheet_name=sheet_name, header=None, engine='openpyxl')
     except: return []
