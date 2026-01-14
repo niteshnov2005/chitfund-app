@@ -146,19 +146,30 @@ def get_all_sheet_names():
     except: return []
 
 # --- 1. DASHBOARD READER (Supports specific sheet_name) ---
+# --- 1. DASHBOARD READER (Supports specific sheet_name) ---
 def get_excel_data(sheet_name=None):
     if not os.path.exists(FILE_NAME): return []
     try:
-        # If no sheet specified, default to the LAST sheet (Most recent month)
+        # DEBUG: Print sheet names to verify order
+        wb_temp = openpyxl.load_workbook(FILE_NAME, read_only=True)
+        all_sheets = wb_temp.sheetnames
+        print(f"DEBUG: All Sheets: {all_sheets}")
+        wb_temp.close()
+
+        # If no sheet specified, default to the FIRST sheet (Index 0)
+        # because run_auction_batch moves the NEW sheet to the Front.
         if not sheet_name:
-            sheets = get_all_sheet_names()
-            if sheets:
-                sheet_name = sheets[-1]
+            if all_sheets:
+                sheet_name = all_sheets[0] 
             else:
                 return []
             
+        print(f"DEBUG: Reading sheet '{sheet_name}'")
         df = pd.read_excel(FILE_NAME, sheet_name=sheet_name, header=None, engine='openpyxl')
-    except: return []
+    except Exception as e:
+        print(f"ERROR in get_excel_data: {e}")
+        traceback.print_exc()
+        return []
 
     paid_db = load_paid_db()
     members_list = []
