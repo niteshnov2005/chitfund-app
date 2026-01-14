@@ -570,6 +570,34 @@ def get_sheet_data_api():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/delete_sheet', methods=['POST'])
+def delete_sheet_api():
+    if 'user' not in session: return jsonify({'error': 'Unauthorized'}), 401
+    try:
+        req = request.json
+        sheet_name = req.get('sheet_name')
+        if not sheet_name: return jsonify({'error': 'Missing sheet name'}), 400
+        
+        wb = openpyxl.load_workbook(FILE_NAME)
+        if sheet_name not in wb.sheetnames:
+            wb.close()
+            return jsonify({'error': 'Sheet not found'}), 404
+        
+        if len(wb.sheetnames) <= 1:
+            wb.close()
+            return jsonify({'error': 'Cannot delete the last remaining sheet'}), 400
+            
+        wb.remove(wb[sheet_name])
+        wb.save(FILE_NAME)
+        wb.close()
+        
+        # SYNC TO CLOUD
+        if USE_CLOUD_STORAGE: sync_up()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/save_sheet_data', methods=['POST'])
 def save_sheet_data_api():
     if 'user' not in session: return jsonify({'error': 'Unauthorized'}), 401

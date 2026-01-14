@@ -54,6 +54,11 @@
             color: #333;
         }
 
+        .btn-delete {
+            background: #f44336;
+            color: white;
+        }
+
         select {
             padding: 8px;
             border-radius: 4px;
@@ -95,6 +100,7 @@
             <a href="/dashboard" class="btn btn-back">← Dashboard</a>
             <select id="sheetSelect" onchange="loadSheet()"></select>
             <button class="btn btn-save" onclick="saveData()">💾 Save Changes</button>
+            <button class="btn btn-delete" onclick="deleteSheet()">🗑️ Delete Sheet</button>
             <span id="status"></span>
         </div>
         <div style="font-weight:bold; color:#2E7D32;">Live Excel Editor</div>
@@ -148,6 +154,52 @@
                 })
                 .catch(err => {
                     document.getElementById('spreadsheet').innerHTML = 'Error loading sheet: ' + err;
+                });
+        }
+
+        function deleteSheet() {
+            const sheet = document.getElementById('sheetSelect').value;
+            if (!sheet) return;
+
+            if (!confirm(`Are you sure you want to delete the sheet "${sheet}"? This action cannot be undone.`)) {
+                return;
+            }
+
+            fetch('/api/delete_sheet', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sheet_name: sheet })
+            })
+                .then(res => res.json())
+                .then(res => {
+                    if (res.success) {
+                        alert('Sheet deleted successfully!');
+                        refreshSheets();
+                    } else {
+                        alert('Error: ' + res.error);
+                    }
+                })
+                .catch(err => alert('Network Error'));
+        }
+
+        function refreshSheets() {
+            fetch('/api/sheets')
+                .then(res => res.json())
+                .then(data => {
+                    const select = document.getElementById('sheetSelect');
+                    select.innerHTML = '';
+                    data.sheets.forEach(sheet => {
+                        const opt = document.createElement('option');
+                        opt.value = sheet;
+                        opt.innerText = sheet;
+                        select.appendChild(opt);
+                    });
+                    if (data.sheets.length > 0) {
+                        select.selectedIndex = 0;
+                        loadSheet();
+                    } else {
+                        document.getElementById('spreadsheet').innerHTML = 'No sheets available.';
+                    }
                 });
         }
 
