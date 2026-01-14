@@ -776,10 +776,11 @@ from itertools import groupby
 def view_receipts():
     if 'user' not in session: return redirect(url_for('login_page'))
     
-    # Default to the most recent sheet (Last one) if no sheet specified?
-    # Actually, let's explicit pull the last sheet name.
     sheet_names = get_all_sheet_names()
-    target_sheet = sheet_names[-1] if sheet_names else None
+    # Accept explicit sheet param, else default to latest (index 0)
+    target_sheet = request.args.get('sheet')
+    if not target_sheet and sheet_names:
+        target_sheet = sheet_names[0]
     
     data_response = get_excel_data(target_sheet)
     # Handle dict response
@@ -795,7 +796,11 @@ def view_receipts():
     members.sort(key=sort_key)
     
     # Continuous Layout: Return flat list, sorted by Area
-    return render_template('receipt_preview.html', members=members, now=datetime.now())
+    return render_template('receipt_preview.html', 
+                           members=members, 
+                           now=datetime.now(),
+                           sheet_names=sheet_names,
+                           active_sheet=target_sheet)
 
 # --- REPORT ROUTES ---
 @app.route('/reports')

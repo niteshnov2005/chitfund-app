@@ -146,12 +146,99 @@
                 margin-bottom: 2mm;
             }
         }
+
+
+        /* Floating Control Bar */
+        .control-bar {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px 25px;
+            border-radius: 50px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .control-bar label {
+            font-weight: bold;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .control-bar select {
+            padding: 8px 15px;
+            border-radius: 20px;
+            border: 1px solid #ddd;
+            font-size: 14px;
+            outline: none;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+
+        .control-bar select:focus {
+            border-color: #2196F3;
+        }
+
+        .control-btn {
+            background: #2196F3;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 14px;
+            transition: background 0.3s, transform 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .control-btn:hover {
+            background: #1976D2;
+            transform: translateY(-1px);
+        }
+
+        .control-btn.secondary {
+            background: #27ae60;
+        }
+
+        /* Print styles */
+        @media print {
+
+            .control-bar,
+            .print-btn {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 
 <body>
 
-    <a href="javascript:window.print()" class="print-btn">Print / Save PDF</a>
+    <div class="control-bar">
+        <label for="month-select">Select Month:</label>
+        <select id="month-select">
+            {% for name in sheet_names %}
+            <option value="{{ name }}" {% if name==active_sheet %}selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+        </select>
+        <button class="control-btn" onclick="changeMonth()">View</button>
+        <button class="control-btn secondary" onclick="window.print()">Print / Save PDF</button>
+        <a href="/dashboard" class="control-btn" style="background: #e67e22;">Back</a>
+    </div>
+
+    <script>
+        function changeMonth() {
+            const sheet = document.getElementById('month-select').value;
+            window.location.href = `/view_receipts?sheet=${encodeURIComponent(sheet)}`;
+        }
+    </script>
 
     <div class="page">
         <div class="grid-container">
