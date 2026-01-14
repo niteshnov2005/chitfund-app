@@ -887,4 +887,9 @@ def reports_page():
 def excel_editor_page():
     return render_template('excel_editor.html') if 'user' in session else redirect(url_for('login_page'))
 
-if __name__ == '__main__': app.run(debug=True)
+if __name__ == '__main__':
+    # Local Dev (Windows)
+    app.run(debug=True)
+else:
+    # Production / WSGI (PythonAnywhere)
+    application = app
