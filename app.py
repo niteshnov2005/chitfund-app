@@ -250,11 +250,14 @@ def get_excel_data(sheet_name=None):
 
                     members_list.append(member_obj)
                     member_map[unique_key] = member_obj
+                    print(f"DEBUG: Found Member in Summary: {raw_name} ({amt})")
 
                     if norm_n not in name_only_map: name_only_map[norm_n] = []
                     name_only_map[norm_n].append(member_obj)
 
-            except: pass
+            except Exception as e: 
+                print(f"DEBUG Error in Summary Scanning: {e}")
+                pass
 
     # --- STEP 2: SCAN RECEIPTS ---
     receipt_scan_configs = [
@@ -315,6 +318,7 @@ def get_excel_data(sheet_name=None):
                         }
                         members_list.append(target_member)
                         member_map[key] = target_member
+                        print(f"DEBUG: Auto-created Member from Receipt: {curr_name}")
                         if n_receipt not in name_only_map: name_only_map[n_receipt] = []
                         name_only_map[n_receipt].append(target_member)
 
@@ -414,11 +418,22 @@ def get_excel_data(sheet_name=None):
     try:
         # Check specific cell
         grand_total_val = clean_num(df.iloc[22, 14])
+        print(f"DEBUG: Grand Total from Excel cell [22,14]: {grand_total_val}")
         # Validate order of magnitude (should be > 100k)
         if grand_total_val < 100000:
-             # Fallback scan
-             pass
-    except: pass
+             # Fallback scan: maybe its somewhere else or sheet is smaller
+             print("DEBUG: Grand Total cell too small, scanning column 14 for 'Grand Total' text...")
+             for r in range(df.shape[0]):
+                 try:
+                     if 'GRAND TOTAL' in str(df.iloc[r, 13]).upper() or 'TOTAL' in str(df.iloc[r, 13]).upper():
+                         grand_total_val = clean_num(df.iloc[r, 14])
+                         if grand_total_val > 100000: break
+                 except: pass
+    except Exception as e: 
+        print(f"DEBUG Error in Grand Total extraction: {e}")
+        pass
+    
+    print(f"DEBUG: Returning {len(final_list)} members. Grand Total: {grand_total_val}")
     
     # Return structure with metadata
     return {
