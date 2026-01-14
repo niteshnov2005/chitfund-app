@@ -149,11 +149,13 @@ def get_all_sheet_names():
 def get_excel_data(sheet_name=None):
     if not os.path.exists(FILE_NAME): return []
     try:
-        # Read specific sheet if provided, else default (active/first)
-        if sheet_name:
-            df = pd.read_excel(FILE_NAME, sheet_name=sheet_name, header=None, engine='openpyxl')
-        else:
-            df = pd.read_excel(FILE_NAME, header=None, engine='openpyxl')
+        # If no sheet specified, default to the LAST sheet (Most recent month)
+        if not sheet_name:
+            wb = openpyxl.load_workbook(FILE_NAME, read_only=True)
+            sheet_name = wb.sheetnames[-1] # Assume last sheet is latest
+            wb.close()
+            
+        df = pd.read_excel(FILE_NAME, sheet_name=sheet_name, header=None, engine='openpyxl')
     except: return []
 
     paid_db = load_paid_db()
