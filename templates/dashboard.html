@@ -345,32 +345,26 @@
                     // Count Total Members
                     const memberCount = data.length;
 
-                    // Calculate Total Value (Sum of all totals)
-                    let totalValue = 0;
+                    // Use the calculated total from backend for consistency with Reports
+                    const totalValue = responseData.calculated_total || 0;
                     let pendingCount = 0;
 
                     data.forEach(m => {
-                        totalValue += m.total;
                         // Count Pending: If total > 0 AND not marked as paid
                         if (m.total > 0 && !m.is_paid) {
                             pendingCount++;
                         }
                     });
 
-                    // ERROR: The sum of member totals is significantly less than the grand total 
-                    // found in the Excel sheet (due to missing data or structure issues).
-                    // So we prioritize the backendTotal if it exists (which we grab from Row 23).
-                    if (backendTotal > 0) {
-                        totalValue = backendTotal;
-                    }
-
-                    // Format Total Value (e.g. 88.5L)
-                    // Logic: 8855450 / 100000 = 88.55
+                    // Format Total Value
+                    // If > 100k, show in Lakhs (e.g. 88.63L), but also show full amount in tooltip
                     const lakhs = (totalValue / 100000).toFixed(2);
+                    const formattedDisplay = (totalValue >= 100000) ? "₹" + lakhs + "L" : "₹" + totalValue.toLocaleString();
 
                     // Update UI
                     document.getElementById('val-members').innerText = memberCount;
-                    document.getElementById('val-total').innerText = "₹" + lakhs + "L";
+                    document.getElementById('val-total').innerText = formattedDisplay;
+                    document.getElementById('val-total').title = "Exact: ₹" + totalValue.toLocaleString();
                     document.getElementById('val-pending').innerText = pendingCount;
                 })
                 .catch(err => {

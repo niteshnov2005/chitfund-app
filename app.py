@@ -190,7 +190,13 @@ def get_excel_data(sheet_name=None):
                 raw_name = str(df.iloc[r, block['name']]).strip().title()
                 if raw_name.upper() in ['NAN', 'NAME', 'AMOUNT', 'TOTAL', '', '0', 'TOTAL PAYABLE', 'AREA']: continue
 
-                amt = clean_num(df.iloc[r, block['amt']])
+                raw_amt = df.iloc[r, block['amt']]
+                amt = clean_num(raw_amt)
+                
+                # IMPORTANT: Skip if amount is effectively 0 or NaN to avoid clutter/errors
+                import math
+                if math.isnan(amt) or amt == 0: continue
+                
                 if any(abs(amt - ex) < 1 for ex in exclude_values): continue
 
                 raw_area = "General"
@@ -414,10 +420,14 @@ def get_excel_data(sheet_name=None):
 
     # --- STEP 5: GET EXPLICIT GRAND TOTAL ---
     # The excel has a trusted Grand Total at Row 23, Col 15 (Index 22, 14 0-indexed)
+    import math
     grand_total_val = 0
     try:
         # Check specific cell
-        grand_total_val = clean_num(df.iloc[22, 14])
+        raw_gt = df.iloc[22, 14]
+        grand_total_val = clean_num(raw_gt)
+        if math.isnan(grand_total_val): grand_total_val = 0
+        
         print(f"DEBUG: Grand Total from Excel cell [22,14]: {grand_total_val}")
         # Validate order of magnitude (should be > 100k)
         if grand_total_val < 100000:
@@ -425,20 +435,28 @@ def get_excel_data(sheet_name=None):
              print("DEBUG: Grand Total cell too small, scanning column 14 for 'Grand Total' text...")
              for r in range(df.shape[0]):
                  try:
-                     if 'GRAND TOTAL' in str(df.iloc[r, 13]).upper() or 'TOTAL' in str(df.iloc[r, 13]).upper():
-                         grand_total_val = clean_num(df.iloc[r, 14])
-                         if grand_total_val > 100000: break
+                     label = str(df.iloc[r, 13]).upper()
+                     if 'GRAND TOTAL' in label or 'TOTAL' in label:
+                         val = clean_num(df.iloc[r, 14])
+                         if not math.isnan(val) and val > 100000: 
+                             grand_total_val = val
+                             break
                  except: pass
     except Exception as e: 
         print(f"DEBUG Error in Grand Total extraction: {e}")
         pass
     
-    print(f"DEBUG: Returning {len(final_list)} members. Grand Total: {grand_total_val}")
+    if math.isnan(grand_total_val): grand_total_val = 0
+    # Calculate a sum of all found members for consistency
+    calculated_total = sum(m['total'] for m in final_list)
+    
+    print(f"DEBUG: Returning {len(final_list)} members. Grand Total (Excel): {grand_total_val}, Calculated Total: {calculated_total}")
     
     # Return structure with metadata
     return {
         'members': sorted(final_list, key=lambda x: x['name']),
-        'grand_total': grand_total_val
+        'grand_total': grand_total_val,
+        'calculated_total': calculated_total
     }
 
 # --- 2. AUCTION READER ---
