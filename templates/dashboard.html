@@ -254,13 +254,17 @@
 
     <div class="container">
         <h1>Dashboard</h1>
-        <p style="color:#777; margin-bottom:30px;">Overview for {{ timestamp }}</p>
+        <p style="color:#777; margin-bottom:30px;">
+            Overview for <strong>{{ active_sheet }}</strong>
+            <span style="margin-left:15px; font-size: 0.8em; opacity: 0.7;">(at {{ timestamp }})</span>
+        </p>
 
         <div class="stats-grid">
 
             <div class="card" style="border-left-color: #9b59b6;">
                 <h3>Total Value</h3>
                 <div class="value" id="val-total"><span class="loading-dots"></span></div>
+                <div id="val-total-exact" style="font-size: 0.8rem; color: #7f8c8d; margin-top: 5px;"></div>
             </div>
 
             <div class="card" style="border-left-color: #2ecc71;">

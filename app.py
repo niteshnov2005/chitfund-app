@@ -652,7 +652,12 @@ def login_logic():
 @app.route('/logout')
 def logout(): session.pop('user', None); return redirect(url_for('login_page'))
 @app.route('/dashboard')
-def dashboard(): return render_template('dashboard.html', timestamp=time.time()) if 'user' in session else redirect(url_for('login_page'))
+def dashboard():
+    if 'user' not in session: return redirect(url_for('login_page'))
+    # Get the default (latest) sheet name
+    sheets = get_all_sheet_names()
+    default_sheet = sheets[0] if sheets else "No Data"
+    return render_template('dashboard.html', timestamp=time.time(), active_sheet=default_sheet)
 @app.route('/members')
 def members_page(): return render_template('members.html') if 'user' in session else redirect(url_for('login_page'))
 @app.route('/auction')
