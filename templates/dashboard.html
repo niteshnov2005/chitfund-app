@@ -369,6 +369,7 @@
                     document.getElementById('val-members').innerText = memberCount;
                     document.getElementById('val-total').innerText = formattedDisplay;
                     document.getElementById('val-total').title = "Exact: ₹" + totalValue.toLocaleString();
+                    document.getElementById('val-total-exact').innerText = "Exact: ₹" + totalValue.toLocaleString();
                     document.getElementById('val-pending').innerText = pendingCount;
                 })
                 .catch(err => {
