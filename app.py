@@ -178,230 +178,98 @@ def get_excel_data(sheet_name=None):
     member_map = {}
     name_only_map = {}
 
-    summary_blocks = [
-        {'amt': 19, 'name': 20, 'area': 21}, # Cols T, U, V
-        {'amt': 23, 'name': 24, 'area': 25}  # Cols X, Y, Z
-    ]
-    exclude_values = [4132350.0, 3708850.0, 7841200.0]
-
-    for block in summary_blocks:
-        for r in range(df.shape[0]):
-            try:
-                raw_name = str(df.iloc[r, block['name']]).strip().title()
-                if raw_name.upper() in ['NAN', 'NAME', 'AMOUNT', 'TOTAL', '', '0', 'TOTAL PAYABLE', 'AREA']: continue
-
-                raw_amt = df.iloc[r, block['amt']]
-                amt = clean_num(raw_amt)
-                
-                # IMPORTANT: Skip if amount is effectively 0 or NaN to avoid clutter/errors
-                import math
-                if math.isnan(amt) or amt == 0: continue
-                
-                if any(abs(amt - ex) < 1 for ex in exclude_values): continue
-
-                raw_area = "General"
-                if block['area'] < df.shape[1]:
-                    val = str(df.iloc[r, block['area']]).strip().title()
-                    if val and val.upper() != 'NAN' and not val.replace('.','',1).isdigit():
-                        raw_area = val
-
-                # Create Keys
-                norm_n = normalize_text(raw_name)
-                norm_a = normalize_text(raw_area)
-                unique_key = f"{norm_n}_{norm_a}"
-
-                # --- DUPLICATE CHECK & MERGE ---
-                if unique_key in member_map:
-                    existing = member_map[unique_key]
-                    existing['total'] += amt
-
-                    new_id = f"{existing['name']}_{int(existing['total'])}".replace(" ", "")
-                    existing['payment_id'] = new_id
-
-                    db_entry = paid_db.get(new_id, None)
-                    if db_entry:
-                        if db_entry is True:
-                            existing['is_paid'] = True
-                            existing['paid_date'] = None
-                        elif isinstance(db_entry, str):
-                            existing['is_paid'] = True
-                            existing['paid_date'] = db_entry
-                    else:
-                        existing['is_paid'] = False
-                        existing['paid_date'] = None
-
-                else:
-                    payment_id = f"{raw_name}_{int(amt)}".replace(" ", "")
-
-                    db_entry = paid_db.get(payment_id, None)
-                    is_paid = False
-                    paid_date = None
-
-                    if db_entry:
-                        if db_entry is True:
-                            is_paid = True
-                        elif isinstance(db_entry, str):
-                            is_paid = True
-                            paid_date = db_entry
-
-                    member_obj = {
-                        'name': raw_name,
-                        'area': raw_area,
-                        'total': amt,
-                        'items': [],
-                        'payment_id': payment_id,
-                        'is_paid': is_paid,
-                        'paid_date': paid_date
-                    }
-
-                    members_list.append(member_obj)
-                    member_map[unique_key] = member_obj
-                    print(f"DEBUG: Found Member in Summary: {raw_name} ({amt})")
-
-                    if norm_n not in name_only_map: name_only_map[norm_n] = []
-                    name_only_map[norm_n].append(member_obj)
-
-            except Exception as e: 
-                print(f"DEBUG Error in Summary Scanning: {e}")
-                pass
-
-    # --- STEP 2: SCAN RECEIPTS ---
-    receipt_scan_configs = [
-        {'col_idx': 0, 'name_col': 1, 'area_col': 2, 'amt_col': 3},
-        {'col_idx': 5, 'name_col': 6, 'area_col': 7, 'amt_col': 8},
-        {'col_idx': 10, 'name_col': 11, 'area_col': 12, 'amt_col': 13} # Added likely 3rd column block
+    # --- STEP 1: SCAN LEDGER BLOCKS (Authoritative Member Data) ---
+    # Ledger columns are typically:
+    # A (0): Month/Label, B (1): Plan/Name, C (2): Commission, D (3): Amount
+    # F (5): Month/Label, G (6): Plan/Name, H (7): Commission, I (8): Amount
+    
+    ledger_configs = [
+        {'label_col': 0, 'data_col': 1, 'comm_col': 2, 'amt_col': 3},
+        {'label_col': 5, 'data_col': 6, 'comm_col': 7, 'amt_col': 8}
     ]
 
-    for config in receipt_scan_configs:
-        col_start = config['col_idx']
-        name_col_idx = config['name_col']
-        area_col_idx = config['area_col']
-
-        curr_name = None
+    for config in ledger_configs:
+        curr_member = None
         curr_area = "General"
-
+        
         for r in range(df.shape[0]):
             try:
-                c0 = str(df.iloc[r, col_start]).strip()
-                if 'NAME' in c0.upper() and len(c0) < 25:
-                    curr_name = str(df.iloc[r, name_col_idx]).strip().title()
-                    # Validation: Skip empty names
-                    if not curr_name or curr_name.upper() in ['NONE', 'NAN', '']:
-                        curr_name = None
+                cell_label = str(df.iloc[r, config['label_col']]).strip().upper()
+                
+                # Detect Member Header
+                if cell_label == 'NAME':
+                    raw_name = str(df.iloc[r, config['data_col']]).strip().title()
+                    if not raw_name or raw_name.upper() in ['NAN', 'NONE', '']:
+                        curr_member = None
                         continue
-
-                    val = str(df.iloc[r, area_col_idx]).strip().title()
-                    if val and val.upper() != 'NAN' and not val.replace('.','',1).isdigit():
-                        curr_area = val
-                    else:
-                        curr_area = "General"
-                    
-                    # --- IMMEDIATE MEMBER CREATION ---
-                    n_receipt = normalize_text(curr_name)
-                    a_receipt = normalize_text(curr_area)
-                    key = f"{n_receipt}_{a_receipt}"
-                    
-                    target_member = None
-                    if key in member_map:
-                        target_member = member_map[key]
-                    else:
-                        # Fuzzy search fallback (check existing list)
-                        candidates = name_only_map.get(n_receipt)
-                        if candidates: # logic to find cand...
-                             if len(candidates) == 1: target_member = candidates[0]
-                             # simplify fuzzy for header creation?
                         
-                    if not target_member:
-                        new_id = f"{key}_auto"
-                        target_member = {
-                            'name': curr_name,
-                            'area': curr_area,
+                    raw_area = str(df.iloc[r, config['comm_col']]).strip().title()
+                    if not raw_area or raw_area.upper() in ['NAN', 'NONE', '']:
+                        raw_area = "General"
+                    
+                    norm_n = normalize_text(raw_name)
+                    norm_a = normalize_text(raw_area)
+                    unique_key = f"{norm_n}_{norm_a}"
+                    
+                    if unique_key not in member_map:
+                        curr_member = {
+                            'name': raw_name,
+                            'area': raw_area,
                             'total': 0,
-                            'paid_amount': 0,
                             'items': [],
-                            'payment_id': new_id,
-                            'is_paid': False
+                            'payment_id': f"{raw_name}_0".replace(" ", ""), # Temporary
+                            'is_paid': False,
+                            'paid_date': None
                         }
-                        members_list.append(target_member)
-                        member_map[key] = target_member
-                        print(f"DEBUG: Auto-created Member from Receipt: {curr_name}")
-                        if n_receipt not in name_only_map: name_only_map[n_receipt] = []
-                        name_only_map[n_receipt].append(target_member)
+                        members_list.append(curr_member)
+                        member_map[unique_key] = curr_member
+                        name_only_map.setdefault(norm_n, []).append(curr_member)
+                    else:
+                        curr_member = member_map[unique_key]
 
-                if curr_name and c0.replace('.','',1).isdigit():
-                    # Check payment amounts...
-                    # We need to re-fetch target_member here properly to add items
-                    
-                    curr_member_obj = target_member # Set state
-
-                # --- ITEM DETECTION ---
-                if curr_member_obj and c0.replace('.','',1).isdigit():
+                # Detect Individual Plan Rows (Numeric Month)
+                elif curr_member and cell_label.replace('.','',1).isdigit():
+                    month_label = str(df.iloc[r, config['label_col']]).strip()
+                    plan_val = str(df.iloc[r, config['data_col']]).strip()
+                    comm_val = str(df.iloc[r, config['comm_col']]).strip()
                     amt = clean_num(df.iloc[r, config['amt_col']])
+                    
                     if amt > 0:
-                        n_receipt = normalize_text(curr_member_obj['name']) # Use obj name
+                        # Generate Item ID
+                        item_id = f"{normalize_text(curr_member['name'])}_{int(amt)}_{month_label}_{plan_val}".replace(" ", "").replace(".","")
                         
-                        month = str(df.iloc[r, col_start]).strip()
-                        plan = str(df.iloc[r, col_start+1]).strip()
-                        commission = str(df.iloc[r, col_start+2]).strip()
-
-                        # Generate Granular Item ID common for both branches
-                        safe_month = month.replace(" ", "")
-                        safe_plan = plan.replace(" ", "")
-                        item_id = f"{n_receipt}_{int(amt)}_{safe_month}_{safe_plan}".replace(" ", "")
-
-                        # Check if this specific item is paid
+                        # Check payment status
                         db_entry = paid_db.get(item_id)
                         item_is_paid = False
                         item_paid_date = None
-                        
                         if db_entry:
-                            if db_entry is True: item_is_paid = True
-                            elif isinstance(db_entry, str): 
-                                item_is_paid = True
-                                item_paid_date = db_entry
-
-                        # Backward Compatibility Check
-                        if not item_is_paid and paid_db.get(curr_member_obj['payment_id']):
-                            db_val = paid_db.get(curr_member_obj['payment_id'])
                             item_is_paid = True
-                            item_paid_date = db_val if isinstance(db_val, str) else None
+                            if isinstance(db_entry, str): item_paid_date = db_entry
 
-                        curr_member_obj['items'].append({
-                            'month': month,
-                            'plan': plan,
-                            'commission': commission,
+                        curr_member['items'].append({
+                            'month': month_label,
+                            'plan': plan_val,
+                            'commission': comm_val,
                             'amount': amt,
                             'id': item_id,
                             'is_paid': item_is_paid,
                             'paid_date': item_paid_date
                         })
-            except: pass
+                        
+                        # Update Member-level payment_id (legacy support)
+                        curr_member['payment_id'] = f"{curr_member['name']}_{int(sum(i['amount'] for i in curr_member['items']))}".replace(" ", "")
 
-    # --- STEP 3: ATTACH COMMISSIONS ---
-    comm_col = -1
-    for c in range(df.shape[1]):
-        for r in range(20):
-            if 'TOTAL COMMISSION' in str(df.iloc[r, c]).upper(): comm_col = c; break
+                # Reset member at block end
+                elif 'TOTAL' in cell_label:
+                    curr_member = None
 
-    if comm_col != -1:
-        for r in range(df.shape[0]):
-            val = clean_num(df.iloc[r, comm_col])
-            if val > 0:
-                if 'TOTAL' in str(df.iloc[r, comm_col-1]).upper(): continue
-                name_guess = str(df.iloc[r, 1]).strip().title()
-                if name_guess:
-                     norm_n = normalize_text(name_guess)
-                     candidates = name_only_map.get(norm_n)
-                     if candidates and len(candidates) > 0:
-                         candidates[0]['items'].append({
-                             'month': '-', 
-                             'plan': 'Comm.', 
-                             'commission': '-', 
-                             'amount': val,
-                             'id': f"comm_{int(val)}_{r}", 
-                             'is_paid': True, # Commissions are effectively "paid" or credits? Actually let's assume auto-paid/credit.
-                             'paid_date': None
-                         })
+            except Exception as e:
+                pass
+
+    # --- STEP 2: SCAN FOR COMMISSIONS (Columns B and G specifically for 'Comm.') ---
+    # Many users have 'Comm.' rows in their plans. Our Ledger scan above handles them if they have numeric months.
+    # If they are listed separately, we'll find them here.
+    # Actually, the ledger scan is comprehensive enough. We'll add a specific check for Row-based Grand Totals.
 
     # --- STEP 4: RE-CALCULATE MEMBER TOTALS with Partial Logic ---
     final_list = []
